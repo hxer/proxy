@@ -4,6 +4,9 @@
 """get some proxy ip
 by haoxi, 2015.11.27
 version:python2.7.x
+*** TODO ***
+[+]sqlite3支持的并发数有限，使用线程过多后，会出现超时，数据库locked现象
+    [S]:减少线程数,更改默认超时时间,换其他数据库
 """
 
 from __future__ import unicode_literals
@@ -105,14 +108,17 @@ class MimvpSql(threading.Thread):
     def execute_sql(self, sql, values=None):
         """
         """
-        conn = sqlite3.connect('mimvp.sqlite3')
-        cur = conn.cursor()
-        cur.execute(sql, values)
-        #just sql query success,cur.fetchall return not empty list
-        #other like update, insert, return empry list
-        result = cur.fetchall()
-        conn.commit()
-        conn.close()
+        try:
+            conn = sqlite3.connect('mimvp.sqlite3')
+            cur = conn.cursor()
+            cur.execute(sql, values)
+            #just sql query success,cur.fetchall return not empty list
+            #other like update, insert, return empry list
+            result = cur.fetchall()
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            logging.error("database error: %s", e)
         return result
 
 
@@ -237,7 +243,7 @@ def get_mimvp_urls():
 
 def main():
     #spqwn a pool of threads, and pass them queue instance
-    for i in range(6):
+    for i in range(3):
         mp = MimvpProxy(in_queue, out_queue)
         mp.setDaemon(True)
         mp.start()
@@ -260,7 +266,7 @@ if __name__ == "__main__":
     from apscheduler.schedulers.blocking import BlockingScheduler
 
     sched = BlockingScheduler()
-    sched.add_job(main, "interval", minutes=30)
+    sched.add_job(main, "interval", hours=1)
     try:
         sched.start()
     except:
