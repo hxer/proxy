@@ -13,12 +13,17 @@ import sqlite3
 import Queue
 import threading
 import re
+import logging
 
 if False:
     import pytesseract
     from PIL import Image
     import io
 
+logging.basicConfig(filename="proxy.log",
+        level=logging.WARNING,
+        format='%(asctime)s %(levelname)s %(message)s',
+        datefmt='%Y-%m-%d %H:%M')
 
 out_queue = Queue.Queue()
 in_queue =  Queue.Queue()
@@ -33,20 +38,20 @@ class MimvpSql(threading.Thread):
         self.in_queue = in_queue
         self.creater_table()
 
-
     def run(self):
         """
         """
-        print("MimvpSql run ...")
         while True:
             proxy = self.in_queue.get()
             result = self.select_proxy(proxy[0])
             if len(result):
                 self.update_proxy(proxy)
                 print("MimvpSql proxy:Update successful")
+                logging.info("MimvpSql proxy:Update successful")
             else:
                 self.insert_proxy(proxy)
                 print("MimvpSql proxy:Insert successful")
+                logging.info("MimvpSql proxy:Insert successful")
             self.in_queue.task_done()
 
     def creater_table(self):
@@ -111,7 +116,6 @@ class MimvpSql(threading.Thread):
         return result
 
 
-
 class MimvpProxy(threading.Thread):
     """
     """
@@ -125,7 +129,6 @@ class MimvpProxy(threading.Thread):
     def run(self):
         """
         """
-        print("MimvpProxy run ...")
         while True:
             url = self.in_queue.get()
             proxy_msg = self.get_proxymsg(url)
@@ -144,11 +147,7 @@ class MimvpProxy(threading.Thread):
             tag_tbs = soup.tbody.find_all("td")
             if thead and tag_tbs:
                 return self.parse_td(thead, tag_tbs)
-            else:
-                print("no tag td in proxy table")
-                #log
-        else:
-            print("get_proxy_msg:no content")
+        logging.warning("[!]not get proxy_msg, maybe web page change")
         return None
 
     def parse_td(self, thead, soup_tbs):
@@ -160,7 +159,7 @@ class MimvpProxy(threading.Thread):
             'p_isp','p_ping','p_transfer','p_checkdtime']
 
         for i in xrange(0, 20*len(thead), len(thead)):
-	    table = table.fromkeys(param, None)
+            table = table.fromkeys(param, None)
             for index, attr in enumerate(thead):
                 if attr in ['p_port']:
                     table[attr] = self.parse_port(soup_tbs[i+index].img.attrs['src'])
@@ -169,11 +168,8 @@ class MimvpProxy(threading.Thread):
                 else:
                     table[attr] = soup_tbs[i+index].text
             if table['p_port']:
-                try:
                     msg = [ table[p] for p in param ]
                     proxy_msg.append(msg)
-                except:
-                    print(table)
         return proxy_msg
 
     def parse_port(self, src):
@@ -202,9 +198,8 @@ class MimvpProxy(threading.Thread):
                 else:
                     print("not match encrys")
             else:
-                print("not match port")
+                logging.warning("[!]not match port, maybe web page change")
             return port
-
 
 
 def get_page(url):
@@ -217,14 +212,12 @@ def get_page(url):
         }
         try:
             response = session.get(url, headers=headers)
-        except requests.exceptions.HTTPError:
-            print("HTTP Error.")
-            #log
-            return None
-        else:
             return response.content
+        except requests.exceptions.HTTPError as e:
+            logging.error("[E]HTTP Error: %s", e)
+            return None
 
-def get_mimvp_purls():
+def get_mimvp_urls():
     """get different proxy urls
         return:
             list[url,]
@@ -235,17 +228,16 @@ def get_mimvp_purls():
     content = get_page(url)
     if content:
         soup = BeautifulSoup(content, "lxml")
-        tags = soup.body.find("div", "tag_area")
-        if tags:
+        try:
+            tags = soup.body.find("div", "tag_area")
             return [base_url+tag.attrs['href'] for tag in tags.find_all('a')]
-        else:
-            print("not match proxy urls")
-            # log
+        except Exception as e:
+            logging.error("[E]not match proxy urls: %s", e)
     return None
 
 def main():
     #spqwn a pool of threads, and pass them queue instance
-    for i in range(1):
+    for i in range(6):
         mp = MimvpProxy(in_queue, out_queue)
         mp.setDaemon(True)
         mp.start()
@@ -255,14 +247,21 @@ def main():
     mp_sql.start()
 
     #populate queue with the data
-    urls = get_mimvp_purls()
+    urls = get_mimvp_urls()
     for url in urls:
         in_queue.put(url)
 
     #wait on the queue until everything has been processed
     in_queue.join()
     out_queue.join()
+    print("it has been finished")
 
 if __name__ == "__main__":
-    main()
-    print("it has been finished")
+    from apscheduler.schedulers.blocking import BlockingScheduler
+
+    sched = BlockingScheduler()
+    sched.add_job(main, "interval", minutes=30)
+    try:
+        sched.start()
+    except:
+        sched.shutdown()
