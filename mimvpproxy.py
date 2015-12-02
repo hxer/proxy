@@ -12,12 +12,13 @@ version:python2.7.x
 from __future__ import unicode_literals
 import requests
 from bs4 import BeautifulSoup
-import sqlite3
 import Queue
 import threading
 import re
 import logging
 import os
+
+from mimvpsql import MimvpSql
 
 if False:
     import pytesseract
@@ -32,7 +33,7 @@ logging.basicConfig(filename="proxy.log",
 out_queue = Queue.Queue()
 in_queue =  Queue.Queue()
 
-class MimvpSql(threading.Thread):
+class ThreadSql(threading.Thread):
     """
     """
     def __init__(self, in_queue):
@@ -40,91 +41,25 @@ class MimvpSql(threading.Thread):
         """
         threading.Thread.__init__(self)
         self.in_queue = in_queue
-        self.creater_table()
+        self.sql = MimvpSql()
 
     def run(self):
         """
         """
         while True:
             proxy = self.in_queue.get()
-            result = self.select_proxy(proxy[0])
+            result = self.sql.select_proxy(proxy[0])
             if result == -1:
                 pass
             elif len(result):
-                self.update_proxy(proxy)
+                self.sql.update_proxy(proxy)
                 print("MimvpSql proxy:Update successful")
                 logging.info("MimvpSql proxy:Update successful")
             else:
-                self.insert_proxy(proxy)
+                self.sql.insert_proxy(proxy)
                 print("MimvpSql proxy:Insert successful")
                 logging.info("MimvpSql proxy:Insert successful")
             self.in_queue.task_done()
-
-    def creater_table(self):
-        """
-        """
-        conn = sqlite3.connect('mimvp.sqlite3')
-        cur = conn.cursor()
-        cur.execute('''CREATE TABLE if not exists proxy
-            (   id integer primary key,
-                ip text not null,
-                port text not null,
-                httpt_ype text not null,
-                anonymous text,
-                country text,
-                isp text,
-                ping_time text,
-                transfer_time text,
-                check_time text
-            )'''
-        )
-        conn.commit()
-        conn.close()
-
-    def insert_proxy(self, proxy):
-        """
-        parameter:
-            proxy[list]:
-        """
-        sql = '''INSERT INTO proxy(ip,port,httpt_ype,anonymous,country,isp,
-            ping_time,transfer_time,check_time)  VALUES (?,?,?,?,?,?,?,?,?)'''
-        self.execute_sql(sql, proxy)
-
-    def select_proxy(self, ip):
-        """
-        parameter:
-            ip[str]:
-        """
-        sql = "SELECT ip FROM proxy where ip=(?)"
-        return self.execute_sql(sql, (ip,))
-
-    def update_proxy(self, proxy):
-        """
-        parameter:
-            proxy[list]
-        """
-        sql = '''UPDATE proxy SET ip=?,port=?,httpt_ype=?,anonymous=?,country=?,isp=?,
-            ping_time=?,transfer_time=?,check_time=? where ip=?'''
-        proxy.append(proxy[0])
-        self.execute_sql(sql, proxy)
-
-    def execute_sql(self, sql, values=None):
-        """
-        """
-        try:
-            conn = sqlite3.connect('mimvp.sqlite3')
-            cur = conn.cursor()
-            cur.execute(sql, values)
-            #just sql query success,cur.fetchall return not empty list
-            #other like update, insert, return empry list
-            result = cur.fetchall()
-            conn.commit()
-            conn.close()
-            return result
-        except Exception as e:
-            logging.error("database error: %s", e)
-            return -1
-
 
 
 class MimvpProxy(threading.Thread):
@@ -214,19 +149,19 @@ class MimvpProxy(threading.Thread):
 
 
 def get_page(url):
-        """
-        """
-        session = requests.session()
-        headers =  {
-            "User-Agent": "Mozilla/5.0 (X11; Linux i686; rv:42.0) Gecko/20100101 Firefox/42.0",
-            "Connection": "keep-alive",
-        }
-        try:
-            response = session.get(url, headers=headers)
-            return response.content
-        except requests.exceptions.HTTPError as e:
-            logging.error("[E]HTTP Error: %s", e)
-            return None
+    """
+    """
+    session = requests.session()
+    headers =  {
+        "User-Agent": "Mozilla/5.0 (X11; Linux i686; rv:42.0) Gecko/20100101 Firefox/42.0",
+        "Connection": "keep-alive",
+    }
+    try:
+        response = session.get(url, headers=headers)
+        return response.content
+    except requests.exceptions.HTTPError as e:
+        logging.error("[E]HTTP Error: %s", e)
+        return None
 
 def get_mimvp_urls():
     """get different proxy urls
@@ -248,14 +183,14 @@ def get_mimvp_urls():
 
 def main():
     #spqwn a pool of threads, and pass them queue instance
-    for i in range(3):
+    for i in range(2):
         mp = MimvpProxy(in_queue, out_queue)
         mp.setDaemon(True)
         mp.start()
 
-    mp_sql = MimvpSql(out_queue)
-    mp_sql.setDaemon(True)
-    mp_sql.start()
+    td_sql = ThreadSql(out_queue)
+    td_sql.setDaemon(True)
+    td_sql.start()
 
     #populate queue with the data
     urls = get_mimvp_urls()
