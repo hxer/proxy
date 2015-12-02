@@ -17,6 +17,7 @@ import Queue
 import threading
 import re
 import logging
+import os
 
 if False:
     import pytesseract
@@ -47,7 +48,9 @@ class MimvpSql(threading.Thread):
         while True:
             proxy = self.in_queue.get()
             result = self.select_proxy(proxy[0])
-            if len(result):
+            if result == -1:
+                pass
+            elif len(result):
                 self.update_proxy(proxy)
                 print("MimvpSql proxy:Update successful")
                 logging.info("MimvpSql proxy:Update successful")
@@ -117,9 +120,11 @@ class MimvpSql(threading.Thread):
             result = cur.fetchall()
             conn.commit()
             conn.close()
+            return result
         except Exception as e:
             logging.error("database error: %s", e)
-        return result
+            return -1
+
 
 
 class MimvpProxy(threading.Thread):
@@ -196,13 +201,13 @@ class MimvpProxy(threading.Thread):
             if match:
                 encrys = match.group(1).strip()
                 if encrys == "4vMpDgw":
-                    print("match 8080 port")
+                    logging.info("match 8080 port")
                     port = "8080"
                 elif encrys == "4vMpAO0OO0O":
-                    print("match 80 port")
+                    logging.info("match 80 port")
                     port = "80"
                 else:
-                    print("not match encrys")
+                    logging.info("not match encrys")
             else:
                 logging.warning("[!]not match port, maybe web page change")
             return port
@@ -260,7 +265,17 @@ def main():
     #wait on the queue until everything has been processed
     in_queue.join()
     out_queue.join()
+    backup_sql()
     print("it has been finished")
+
+def backup_sql():
+    """
+    """
+    bk_command="cp mimvp.sqlite3 mimvp.sqlite3.bk"
+    if os.system(bk_command) == 0:
+        logging.info("backup sql successful")
+    else:
+        logging.warning("backup sql failed")
 
 if __name__ == "__main__":
     from apscheduler.schedulers.blocking import BlockingScheduler
