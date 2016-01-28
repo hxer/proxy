@@ -5,7 +5,7 @@ import subprocess
 import os
 
 proxy_tmp_file = 'proxy_tmp.txt'
-proxy_suc_file = 'proxy_suc.txt'
+proxy_suc_file = '001.proxy.servers.txt'
 
 # save proxy ip and port to file from sqlite3 databse
 conn = sqlite3.connect('mimvp.sqlite3')
@@ -20,11 +20,11 @@ with open(proxy_tmp_file, 'w') as f:
 if os.path.exists(proxy_suc_file):
     with open(proxy_tmp_file, 'a') as tf, open(proxy_suc_file) as sf:
         for line in sf.read():
-            proxy_tmp_file.write(line)
+            tf.write(line)
 
 # checking, need htpwdScan.py(can download from github, then set shell command
 # 'htpwdscan')
-cmd = 'htpwdscan -u=www.baidu.com -proxylist=proxy.txt -checkproxy -suc="百度一下" \
-    -o={f}'.format(f=proxy_suc_file)
+cmd = 'htpwdscan -u=www.baidu.com -proxylist={proxies} -checkproxy -suc="百度一下"'\
+    .format(proxies=proxy_tmp_file)
 s = subprocess.Popen(cmd, shell=True)
 s.wait()
