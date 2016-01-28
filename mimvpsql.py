@@ -13,6 +13,8 @@ import logging
 class MimvpSql(object):
 
 
+    database = 'output/mimvp.sqlite3'
+
     def __init__(self):
         """
         """
@@ -21,7 +23,7 @@ class MimvpSql(object):
     def creater_table(self):
         """
         """
-        conn = sqlite3.connect('mimvp.sqlite3')
+        conn = sqlite3.connect(self.database)
         cur = conn.cursor()
         cur.execute('''CREATE TABLE if not exists proxy
             (   id integer primary key,
@@ -70,7 +72,7 @@ class MimvpSql(object):
         """
         """
         try:
-            conn = sqlite3.connect('mimvp.sqlite3')
+            conn = sqlite3.connect(self.database)
             cur = conn.cursor()
             cur.execute(sql, values)
             #just sql query success,cur.fetchall return not empty list

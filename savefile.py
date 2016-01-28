@@ -4,11 +4,12 @@ import sqlite3
 import subprocess
 import os
 
-proxy_tmp_file = 'proxy_tmp.txt'
-proxy_suc_file = '001.proxy.servers.txt'
+sql_file = 'output/mimvp.sqlite3'
+proxy_tmp_file = 'output/proxy_tmp.txt'
+proxy_suc_file = 'output/001.proxy.servers.txt'
 
 # save proxy ip and port to file from sqlite3 databse
-conn = sqlite3.connect('mimvp.sqlite3')
+conn = sqlite3.connect(sql_file)
 cur = conn.cursor()
 cur.execute('select ip,port from proxy where http_type=?', ('HTTP',))
 with open(proxy_tmp_file, 'w') as f:

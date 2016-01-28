@@ -210,7 +210,7 @@ def main():
 def backup_sql():
     """
     """
-    bk_command="cp mimvp.sqlite3 mimvp.sqlite3.bk"
+    bk_command="cp output/mimvp.sqlite3 output/mimvp.sqlite3.bk"
     if os.system(bk_command) == 0:
         logging.info("backup sql successful")
     else:
