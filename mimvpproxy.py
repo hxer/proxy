@@ -223,7 +223,7 @@ if __name__ == "__main__":
         main()
     else:
         sched = BlockingScheduler()
-        sched.add_job(main, "interval", hours=1)
+        sched.add_job(main, "interval", hours=1, max_instances=10)
         try:
             sched.start()
         except:
