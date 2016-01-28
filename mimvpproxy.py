@@ -25,10 +25,14 @@ if False:
     from PIL import Image
     import io
 
-logging.basicConfig(filename="proxy.log",
+DEBUG = False
+
+if not DEBUG:
+    logging.basicConfig(filename="proxy.log",
         level=logging.WARNING,
         format='%(asctime)s %(levelname)s %(message)s',
-        datefmt='%Y-%m-%d %H:%M')
+        datefmt='%Y-%m-%d %H:%M'
+    )
 
 out_queue = Queue.Queue()
 in_queue =  Queue.Queue()
@@ -215,9 +219,12 @@ def backup_sql():
 if __name__ == "__main__":
     from apscheduler.schedulers.blocking import BlockingScheduler
 
-    sched = BlockingScheduler()
-    sched.add_job(main, "interval", hours=1)
-    try:
-        sched.start()
-    except:
-        sched.shutdown()
+    if DEBUG:
+        main()
+    else:
+        sched = BlockingScheduler()
+        sched.add_job(main, "interval", hours=1)
+        try:
+            sched.start()
+        except:
+            sched.shutdown()

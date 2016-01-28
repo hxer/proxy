@@ -11,8 +11,8 @@ import sqlite3
 import logging
 
 class MimvpSql(object):
-    """
-    """
+
+
     def __init__(self):
         """
         """
@@ -27,7 +27,7 @@ class MimvpSql(object):
             (   id integer primary key,
                 ip text not null,
                 port text not null,
-                httpt_ype text not null,
+                http_type text not null,
                 anonymous text,
                 country text,
                 isp text,
@@ -44,7 +44,7 @@ class MimvpSql(object):
         parameter:
             proxy[list]:
         """
-        sql = '''INSERT INTO proxy(ip,port,httpt_ype,anonymous,country,isp,
+        sql = '''INSERT INTO proxy(ip,port,http_type,anonymous,country,isp,
             ping_time,transfer_time,check_time)  VALUES (?,?,?,?,?,?,?,?,?)'''
         self.execute_sql(sql, proxy)
 
@@ -61,7 +61,7 @@ class MimvpSql(object):
         parameter:
             proxy[list]
         """
-        sql = '''UPDATE proxy SET ip=?,port=?,httpt_ype=?,anonymous=?,country=?,isp=?,
+        sql = '''UPDATE proxy SET ip=?,port=?,http_type=?,anonymous=?,country=?,isp=?,
             ping_time=?,transfer_time=?,check_time=? where ip=?'''
         proxy.append(proxy[0])
         self.execute_sql(sql, proxy)
